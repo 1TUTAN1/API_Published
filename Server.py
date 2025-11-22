@@ -1,7 +1,7 @@
 from pymongo import AsyncMongoClient
 import asyncio
 import tornado.web
-from bson import ObjectId
+import bson
 
 client = AsyncMongoClient("mongodb://localhost:27017")
 db = client["library_DB"]
@@ -39,7 +39,7 @@ class PublishersHandler(tornado.web.RequestHandler):
             self.write(string.encode())
 
         else:
-            publisher = await publishers.find_one({"_id": ObjectId(id)})
+            publisher = await publishers.find_one({"_id": bson.ObjectId(id)})
 
             if publisher != None:
                 self.write(str(publisher).encode())
@@ -54,7 +54,7 @@ class PublishersHandler(tornado.web.RequestHandler):
         self.set_header("Content-Type", "application/json")
 
         data = tornado.escape.json_decode(self.request.body)
-        await publishers.find_one_and_replace({"_id": ObjectId(id)}, data)
+        await publishers.find_one_and_replace({"_id": bson.ObjectId(id)}, data)
 
         self.set_status(200)
         self.write("Editore modificato".encode())
@@ -74,10 +74,23 @@ class PublishersHandler(tornado.web.RequestHandler):
     async def delete(self, id):
         
         self.set_header("Content-Type", "application/json")
-        await publishers.find_one_and_delete({"_id": ObjectId(id)})
 
-        self.set_status(200)
-        self.write("Editore elimimnato con successo".encode())
+        try:
+
+            await publishers.find_one_and_delete({"_id": bson.ObjectId(id)})
+            await books.delete_many({"publisher_id": id})
+
+        except bson.errors.InvalidId:
+
+            self.set_status(404)
+            self.write("Editore non trovato".encode())
+
+        else:
+
+            self.set_status(200)
+            self.write("Editore e i suoi libri sono stati eliminati con successo".encode())
+
+
 
 class BooksHandler(tornado.web.RequestHandler):
     
@@ -85,7 +98,7 @@ class BooksHandler(tornado.web.RequestHandler):
 
         self.set_header("Content-Type", "application/json")
 
-        publisher = await publishers.find_one({"_id": ObjectId(publisher_id)})
+        publisher = await publishers.find_one({"_id": bson.ObjectId(publisher_id)})
 
         if publisher != None:
 
@@ -115,7 +128,7 @@ class BooksHandler(tornado.web.RequestHandler):
                     self.write("Libro non trovato, prova un altro editore")
 
             else:
-                publisher = await books.find_one({"_id": ObjectId(id), "publisher_id": publisher_id})
+                publisher = await books.find_one({"_id": bson.ObjectId(id), "publisher_id": publisher_id})
 
                 if publisher != None:
                     self.write(str(publisher).encode())
@@ -133,7 +146,7 @@ class BooksHandler(tornado.web.RequestHandler):
 
         self.set_header("Content-Type", "application/json")
 
-        await books.find_one_and_delete({"_id": ObjectId(id), "publisher_id": publisher_id})
+        await books.find_one_and_delete({"_id": bson.ObjectId(id), "publisher_id": publisher_id})
 
         self.set_status(200)
         self.write("Libro eliminato con successo")

@@ -39,25 +39,44 @@ class PublishersHandler(tornado.web.RequestHandler):
             self.write(string.encode())
 
         else:
-            publisher = await publishers.find_one({"_id": bson.ObjectId(id)})
 
-            if publisher != None:
-                self.write(str(publisher).encode())
-                self.set_status(200)
+            try:
+                publisher = await publishers.find_one({"_id": bson.ObjectId(id)})
             
-            else:
+            except bson.errors.invalindId:
+
                 self.set_status(404)
                 self.write("Editore non trovato")
+            
+            else:
+
+                if publisher != None:
+                    self.write(str(publisher).encode())
+                    self.set_status(200)
+                
+                else:
+                    self.set_status(404)
+                    self.write("Editore non trovato")
 
     async def put(self, id):
         
         self.set_header("Content-Type", "application/json")
 
         data = tornado.escape.json_decode(self.request.body)
-        await publishers.find_one_and_replace({"_id": bson.ObjectId(id)}, data)
 
-        self.set_status(200)
-        self.write("Editore modificato".encode())
+        try:
+
+            await publishers.find_one_and_replace({"_id": bson.ObjectId(id)}, data)
+
+        except:
+
+            self.set_status(404)
+            self.write("Editore non trovato")
+
+        else: 
+
+            self.set_status(200)
+            self.write("Editore modificato".encode())
 
     async def post(self):
         
@@ -65,10 +84,17 @@ class PublishersHandler(tornado.web.RequestHandler):
 
         data = tornado.escape.json_decode(self.request.body)
 
-        await publishers.insert_one(data)
+        if list(data.keys()) == ["name", "founded_year", "country"]:
 
-        self.set_status(200)
-        self.write(str({"message": "Editore aggiunto", "publisher": data}).encode())
+            await publishers.insert_one(data)
+            self.set_status(200)
+            self.write(str({"message": "Editore aggiunto", "publisher": data}).encode())
+        
+        else:
+
+            self.set_status(404)
+            self.write("Formato dati invalido".encode())
+
 
 
     async def delete(self, id):
@@ -136,20 +162,26 @@ class BooksHandler(tornado.web.RequestHandler):
                 
                 else:
                     self.set_status(404)
-                    self.write("Libro non trovato")
+                    self.write("Libro non trovato".encode())
         else:
 
             self.set_status(404)
-            self.write("Editore non trovato")
+            self.write("Editore non trovato".encode())
 
     async def delete(self, publisher_id, id):
 
         self.set_header("Content-Type", "application/json")
 
-        await books.find_one_and_delete({"_id": bson.ObjectId(id), "publisher_id": publisher_id})
+        try:
+            await books.find_one_and_delete({"_id": bson.ObjectId(id), "publisher_id": publisher_id})
 
-        self.set_status(200)
-        self.write("Libro eliminato con successo")
+        except bson.errors.invaliId:
+            self.set_status(404)
+            self.wrte("Libro non trovato")
+
+        else:
+            self.set_status(200)
+            self.write("Libro eliminato con successo".encode())
 
 
 

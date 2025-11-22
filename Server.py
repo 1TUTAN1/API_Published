@@ -204,7 +204,7 @@ class BooksHandler(tornado.web.RequestHandler):
             data["publisher_id"] = publisher_id
             await books.insert_one(data)
             self.set_status(200)
-            self.write(str({"message": "libro aggiunto con successo", "book": books.find_one(data)}).encode())
+            self.write(str({"message": "libro aggiunto con successo", "book": await books.find_one(data)}).encode())
 
         else:
 

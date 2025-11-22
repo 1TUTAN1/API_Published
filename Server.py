@@ -88,7 +88,7 @@ class PublishersHandler(tornado.web.RequestHandler):
 
             await publishers.insert_one(data)
             self.set_status(200)
-            self.write(str({"message": "Editore aggiunto", "publisher": data}).encode())
+            self.write(str({"message": "Editore aggiunto", "publisher": publishers.find_one(data)}).encode())
         
         else:
 
@@ -168,6 +168,7 @@ class BooksHandler(tornado.web.RequestHandler):
             self.set_status(404)
             self.write("Editore non trovato".encode())
 
+
     async def delete(self, publisher_id, id):
 
         self.set_header("Content-Type", "application/json")
@@ -184,6 +185,52 @@ class BooksHandler(tornado.web.RequestHandler):
             self.write("Libro eliminato con successo".encode())
 
 
+    async def post(self, publisher_id):
+
+        self.set_header("Content-Type", "application/json")
+        data = tornado.escape.json_decode(self.request.body)
+
+        try:
+
+            publisher = await publishers.find_one({"_id": bson.ObjectId(publisher_id)})
+        
+        except:
+
+            self.set_status(404)
+            self.write("Id editore non valido".encode())
+
+        if list(data.keys()) == ["title", "author", "genre", "year"] or publisher != None:
+
+            data["publisher_id"] = publisher_id
+            await books.insert_one(data)
+            self.set_status(200)
+            self.write(str({"message": "libro aggiunto con successo", "book": books.find_one(data)}).encode())
+
+        else:
+
+            self.set_status(404)
+            self.write("Parametri invalidi".encode())
+
+    
+    async def put(self, publisher_id, id):
+
+        self.set_header("Content-Type", "application/json")
+        data = tornado.escape.json_decode(self.request.body)
+        data["publisher_id"] = publisher_id
+
+        book = await books.find_one({"_id": bson.ObjectId(id), "publisher_id": publisher_id})
+
+        if book != None:
+
+            await books.find_one_and_replace(book, data)
+
+            self.set_status(200)
+            self.write("Libro modificato con successo".encode())
+
+        else:
+
+            self.set_status(404)
+            self.write("Libro non trovato".encode())
 
 
 

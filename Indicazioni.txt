@@ -1,0 +1,100 @@
+Sviluppare un'applicazione web asincrona che esponga un'API REST per la gestione di case editrici e relative pubblicazioni, utilizzando il framework Tornado e MongoDB come sistema di persistenza dei dati.
+
+ROUTES
+
+GET tutte le case editrici o ris. filtrati, POST nuova casa editrice	/publishers  
+GET, PUT, DLETE casa editrice 						/publishers/{publisher_id}
+GET tutti i libri o ris. filtrati, POST nuovo libro			/publishers/{publisher_id}/books
+GET, PUT, DELETE libro							/publishers/{publisher_id}/books/{book_id}
+	
+STRUTTURA DEL DATABASE
+
+db = client["publisher_db"]
+publishers_collection = db["publishers"]
+books_collection = db["books"]
+
+
+Collezione "publishers":
+
+			  {
+			    _id: ObjectId('69174945d4c8f7953a3abc53'),
+			    name: 'Mondadori',
+			    founded_year: 1907,
+			    country: 'Italia'
+			  }
+
+Collezione "books":
+
+			  {
+			    _id: ObjectId('69174a71d4c8f7953a3abc5d'),
+			    publisher_id: ObjectId('69174945d4c8f7953a3abc53'),
+			    title: 'Hunger Games',
+			    author: 'Suzanne Collins',
+			    genre: 'Fantasy',
+			    year: 2008
+			  }
+
+
+NOTE IMPORTANTI:
+
+- MongoDB genera automaticamente il campo _id come ObjectId quando viene creato un documento. 
+- Un ObjectId non è serializzabile in JSON, per questo convertirlo prima in stringa, quando necessario per le risposte dell'API.
+
+
+Durante la creazione di un documento "book" nella collezione, oltre ai dati provenienti dal body della richiesta POST, è necessario includere un riferimento al documento "publisher" tramite il campo "publisher_id". 
+Questo campo deve contenere l'ObjectID dell'editore corrispondente, stabilendo così la relazione tra i due documenti nel database.
+
+
+Esempio POST di un libro all'endpoint /publishers/publisher_id/books
+
+Aggiunge il libro alla Mondadori con ObjectId 69174945d4c8f7953a3abc53:
+
+			curl -X POST http://localhost:8888/publishers/69174945d4c8f7953a3abc53/books \
+			  -H "Content-Type: application/json" \
+			  -d '{
+			    "title": "La fattoria degli animali",
+			    "author": "George Orwell",
+			    "genre": "Romanzo",
+			    "year": 1945
+			  }'
+
+Documento creato nel database, collezione "books":
+
+			{
+			   _id: ObjectId('69174d1fd4c8f7953a3abc66'),  <-----  (ObjectID del documento creato automaticamente da MongoDB)
+			   publisher_id: ObjectId('69174945d4c8f7953a3abc53'),  <-----  (ObjectID del documento publisher, non convertito in str)
+			   title: 'La fattoria degli animali',
+			   author: 'George Orwell',
+			   genre: 'Romanzo',
+			   year: 1945
+			}
+
+Risposta HTTP API in json:
+
+			{
+			  "message": "Libro aggiunto con successo",
+			  "book": {
+			    "id": "69174d1fd4c8f7953a3abc66", 	<-----  (ObjectID del documento book convertito in str)
+			    "title": "La fattoria degli animali",
+			    "author": "George Orwell",
+			    "genre": "Romanzo",
+			    "year": 1945,
+			    "publisher_id": "69174945d4c8f7953a3abc53"   <-----  (ObjectID del documento publisher convertito in str)
+			  }
+			}
+
+FILTRI
+
+Possono essere combinati o utilizzati singolarmente:
+
+GET /publishers:
+
+	?name=... - Filtra per nome 
+	?country=... - Filtra per paese
+	
+	GET /publishers/{publisher_id}/books:
+
+	?title=... - Filtra per titolo 
+	?author=... - Filtra per autore 
+	?genre=... - Filtra per genere
+
